@@ -1,0 +1,75 @@
+/* LOGBOOK PWA layer. Additive only: nothing here changes the desktop layout.
+ * Uses the app's own colour variables (from style.css) with fallbacks. */
+
+/* ---- install / standalone polish ---- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+body{
+  /* keep content clear of notches / rounded corners / the home indicator
+     (only has an effect because index.html sets viewport-fit=cover) */
+  padding-left:env(safe-area-inset-left);
+  padding-right:env(safe-area-inset-right);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+header{padding-top:calc(18px + env(safe-area-inset-top));}
+@media (max-width:520px){ header{padding-top:calc(14px + env(safe-area-inset-top));} }
+.toast{bottom:calc(20px + env(safe-area-inset-bottom));}
+button,.tab,select,input[type="checkbox"],input[type="radio"]{touch-action:manipulation;} /* no 300 ms tap delay */
+button{-webkit-tap-highlight-color:rgba(242,169,59,.18);}
+
+/* ---- touch devices: bigger hit targets, no iOS focus-zoom ---- */
+@media (pointer:coarse){
+  .switch-link{padding:10px 6px;}
+  .bell-btn{padding:8px 10px;}
+  input:not([type="checkbox"]):not([type="radio"]),select,textarea{font-size:16px;}
+}
+
+/* ---- phones/tablets: tab bar stays reachable while scrolling ---- */
+@media (max-width:760px){
+  .tabs{
+    position:sticky;top:0;z-index:40;background:var(--bg,#14171A);
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;
+  }
+  .tabs::-webkit-scrollbar{display:none;}
+  html.pwa-banner-on .tabs{top:32px;}
+  #app{min-height:100dvh;}
+}
+
+/* ---- online/offline strip (first child of <body>, sticky) ---- */
+.pwa-status{
+  position:sticky;top:0;z-index:100;display:none;
+  height:32px;line-height:32px;padding:0 12px;text-align:center;
+  font-size:12.5px;font-weight:600;letter-spacing:.01em;
+  padding-top:env(safe-area-inset-top);box-sizing:content-box;
+}
+.pwa-status.show{display:block;}
+.pwa-status.offline{background:var(--rust,#D2604C);color:#1a0e0b;}
+.pwa-status.online{background:var(--teal,#4FA8A0);color:#0b1210;}
+
+/* ---- install / update cards ---- */
+.pwa-dock{
+  position:fixed;left:0;right:0;bottom:0;z-index:45;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:0 12px calc(12px + env(safe-area-inset-bottom));pointer-events:none;
+}
+.pwa-card{
+  pointer-events:auto;width:100%;max-width:440px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  background:var(--panel-2,#20252A);border:1px solid var(--amber,#F2A93B);border-radius:6px;
+  padding:12px 14px;color:var(--text,#ECEEF0);font-size:13px;
+  box-shadow:0 8px 24px rgba(0,0,0,.45);
+}
+.pwa-card-text{display:flex;flex-direction:column;gap:2px;flex:1;min-width:180px;}
+.pwa-card-text span{color:var(--muted,#8B94A0);font-size:12px;line-height:1.35;}
+.pwa-card-actions{display:flex;gap:8px;margin-left:auto;}
+.pwa-btn{
+  background:var(--amber,#F2A93B);color:#14171A;border:none;border-radius:4px;
+  padding:9px 16px;font-size:13px;font-weight:600;min-height:38px;
+}
+.pwa-btn:disabled{opacity:.6;}
+.pwa-btn-ghost{background:transparent;color:var(--muted,#8B94A0);border:1px solid var(--line,#2C3238);}
+.pwa-btn:focus-visible{outline:2px solid var(--blue-light,#60A5FA);outline-offset:2px;}
+
+/* ---- installed (standalone) window ---- */
+html.pwa-standalone body{overscroll-behavior-y:none;}
+@media print{ .pwa-status,.pwa-dock{display:none !important;} }
+@media (prefers-reduced-motion:reduce){ .pwa-card{transition:none;} }

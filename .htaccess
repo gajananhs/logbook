@@ -1,0 +1,50 @@
+# LOGBOOK — Hostinger (LiteSpeed/Apache) rules for the PWA.
+# If you already have an .htaccess in this folder, MERGE these blocks into it
+# rather than replacing it. Paths are relative, so this works in a sub-folder too.
+
+Options -Indexes
+
+# ---- 1. Force HTTPS (service workers + install prompts require it) ----------
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# ---- 2. Never serve project/tooling files over the web -----------------------
+RewriteRule ^(db|scripts|pwa-src|node_modules|\.github|\.git)(/|$) - [F,L]
+RewriteRule ^(package(-lock)?\.json|\.gitignore|config\.sample\.php|api/config_smtp\.sample\.php)$ - [F,L]
+RewriteRule \.(sql|md)$ - [F,L]
+RewriteRule (^|/)\.(?!well-known) - [F,L]
+</IfModule>
+
+# ---- 3. Correct manifest type ----------------------------------------------
+<IfModule mod_mime.c>
+<Files "manifest.json">
+  ForceType application/manifest+json
+</Files>
+</IfModule>
+
+# ---- 4. Caching ---------------------------------------------------------------
+# The service worker, manifest and HTML must always be revalidated or updates
+# would be delayed by the HTTP cache. CSS/JS revalidate too (cheap 304s); the
+# service worker is what makes repeat loads instant for installed users.
+<IfModule mod_headers.c>
+<FilesMatch "^(sw\.js|manifest\.json|offline\.html|index\.html)$">
+  Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
+<FilesMatch "\.(css|js)$">
+  Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
+<FilesMatch "\.(png|jpe?g|gif|ico|svg|woff2?)$">
+  Header set Cache-Control "public, max-age=2592000"
+</FilesMatch>
+# Optional, enable once you're sure HTTPS works everywhere on this domain:
+# Header always set Strict-Transport-Security "max-age=31536000"
+Header always set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# ---- 5. Compression ---------------------------------------------------------------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/json application/manifest+json image/svg+xml
+</IfModule>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>LOGBOOK — Task Manager</title>
+<meta name="theme-color" content="#14171A">
+<meta name="application-name" content="Logbook">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Logbook">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1620x2160.png" media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1640x2360.png" media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1668x2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css?v=12">
+<link rel="stylesheet" href="assets/pwa.css?v=1">
+</head>
+<body>
+
+<div id="app">
+  <div id="loginScreen" class="login-screen">
+    <div class="login-mark">SHIFT LOG · V1</div>
+    <h1 class="login-title">LOGBOOK</h1>
+    <p class="login-sub">Sign in with the name and PIN your admin gave you.</p>
+    <div class="new-user-row" id="newUserRow">
+      <input type="text" id="newUserInput" placeholder="Your name" maxlength="40">
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="newUserPin" placeholder="PIN (optional)" style="max-width:120px;flex:0 0 120px;">
+      <button class="btn-amber" id="enterBtn" onclick="attemptLogin()">Enter</button>
+    </div>
+    <p id="loginError" style="color:var(--rust);font-size:12px;margin-top:14px;min-height:16px;"></p>
+    <p style="color:var(--muted);font-size:11px;margin-top:4px;">Don't have an account yet? Ask your admin to add you from the Employees tab. Forgot your PIN? Ask them to reset it there too.</p>
+  </div>
+
+  <div id="mainScreen" style="display:none;">
+    <header>
+      <div class="brand">
+        <div class="brand-mark">LB</div>
+        <div class="brand-name display">Logbook</div>
+      </div>
+      <div class="who">
+        <button class="bell-btn" id="bellBtn" onclick="toggleNotifPanel()">
+          🔔<span class="bell-badge" id="bellBadge" style="display:none;">0</span>
+        </button>
+        <span>Signed in as <b id="whoName"></b></span>
+        <button class="switch-link" id="backToSalesReportBtn" onclick="backToSalesReport()">Back to Sales Report</button>
+        <button class="switch-link" onclick="switchUser()">Logout</button>
+      </div>
+    </header>
+    <div id="notifPanel" class="notif-panel" style="display:none;"></div>
+
+    <div class="tabs" id="tabBar">
+      <button class="tab active" data-tab="dashboard" onclick="setTab('dashboard')">Dashboard</button>
+      <button class="tab" data-tab="mine" onclick="setTab('mine')">Assigned to Me</button>
+      <button class="tab" data-tab="byme" onclick="setTab('byme')">Assigned by Me</button>
+      <button class="tab" data-tab="team" onclick="setTab('team')">Team Board</button>
+      <button class="tab" data-tab="attendance" onclick="setTab('attendance')">Attendance</button>
+      <button class="tab" data-tab="statuses" onclick="setTab('statuses')">Statuses</button>
+      <button class="tab" data-tab="new" onclick="setTab('new')">Assign Task</button>
+      <span id="adminTabs"></span>
+    </div>
+
+    <main id="mainContent"></main>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="assets/app.js?v=22"></script>
+<script src="assets/pwa.js?v=1"></script>
+</body>
+</html>
