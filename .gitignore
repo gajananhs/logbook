@@ -1,11 +1,10 @@
-# --- secrets: NEVER commit these (real credentials live only on the server) ---
-config.php
-api/config_smtp.php
-.env
-.env.*
-
-# --- OS / editor noise ---
+# OS / editor noise
 .DS_Store
 Thumbs.db
-*.zip
+.vscode/
+.idea/
+
+# local tooling
 node_modules/
+*.log
+*.zip

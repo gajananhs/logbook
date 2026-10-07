@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Logbook — Tasks, timed right</title>
+<meta name="description" content="Logbook: assign and track tasks, log progress, clock attendance and run team reports. Installable, works offline.">
 
 <!-- PWA metadata -->
 <link rel="manifest" href="manifest.json">
@@ -32,10 +33,7 @@
 <link rel="apple-touch-startup-image" href="assets/splash/splash-1668x2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
 <link rel="apple-touch-startup-image" href="assets/splash/splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/style.css?v=21">
-<link rel="stylesheet" href="assets/pwa.css?v=20">
+<link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
 
@@ -130,7 +128,13 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 
-<script src="assets/app.js?v=31"></script>
-<script src="assets/pwa.js?v=20" defer></script>
+<noscript><p style="padding:24px;text-align:center;">Logbook needs JavaScript to run.</p></noscript>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/seed-data.js"></script>
+<script src="assets/js/store.js"></script>
+<script src="assets/js/app.js"></script>
+<script src="assets/js/import-excel.js"></script>
+<script src="assets/js/pwa.js" defer></script>
 </body>
 </html>
