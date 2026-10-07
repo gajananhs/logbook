@@ -10,7 +10,7 @@
  *
  * Do not edit below the marker line — it is the bundled Workbox code.
  * ========================================================================== */
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.0.1';
 const PRECACHE_FILES = [
   'offline.html',
   'manifest.json',

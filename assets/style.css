@@ -30,9 +30,10 @@
   --blue-dark:var(--deep);
   --blue-light:var(--deep-2);
 
-  /* Width of the framed app on tablets/desktops. Meridian's own frame is 390px;
-     Logbook's tables need more room, so the same frame is simply wider here. */
-  --frame-w:1040px;
+  /* The framed app on tablets/desktops is Meridian's own phone frame (390 x 820).
+     Wide tables scroll sideways inside it, exactly as they do on a real phone. */
+  --frame-w:390px;
+  --frame-h:820px;
 }
 *{box-sizing:border-box; margin:0; padding:0;}
 html,body{height:100%;}
@@ -68,16 +69,21 @@ b{font-weight:600;}
   box-shadow:0 24px 60px rgba(22,48,44,0.28);
   overflow:hidden;
   position:relative;
-  height:calc(100vh - 48px);
-  min-height:520px;
+  height:var(--frame-h);
+  max-height:92vh;
   display:flex;
   flex-direction:column;
   flex-shrink:0;
 }
+.notch{
+  position:absolute; top:8px; left:50%; transform:translateX(-50%);
+  width:120px; height:22px; background:var(--deep); border-radius:0 0 16px 16px;
+  z-index:20;
+}
 .statusbar{
   height:34px; flex-shrink:0;
   display:flex; align-items:center; justify-content:space-between;
-  padding:0 26px; font-size:12px; font-weight:600; color:var(--ink);
+  padding:0 22px; font-size:12px; font-weight:600; color:var(--ink);
   background:var(--panel);
 }
 /* ---------- REAL MOBILE / INSTALLED APP: DROP THE FRAME ---------- */
@@ -85,9 +91,10 @@ b{font-weight:600;}
   body{padding:0; align-items:stretch; height:100vh; height:100dvh; min-height:0;}
   .phone{
     width:100%; max-width:100%;
-    height:auto; min-height:0; flex:1 1 auto;
+    height:auto; max-height:none; min-height:0; flex:1 1 auto;
     border:none; border-radius:0; box-shadow:none;
   }
+  .notch{display:none;}
   .statusbar{display:none;}
 }
 
@@ -98,10 +105,10 @@ b{font-weight:600;}
   padding:0 18px 18px;
   background:var(--panel);
   position:relative;
+  container-type:inline-size;
 }
 .screen::-webkit-scrollbar{display:none;}
 .screen{scrollbar-width:none;}
-@media (min-width: 720px) and (display-mode: browser){ .screen{padding:0 28px 24px;} }
 
 /* ---------- APP HEADER ---------- */
 .app-header{
@@ -444,7 +451,8 @@ input:focus, select:focus, textarea:focus{outline:none; border-color:var(--sage)
 
 /* ---------- SMALL-SCREEN TABLE HELPERS ---------- */
 .roster-table td:has(> .online-dot){white-space:nowrap;}
-@media (max-width: 480px){
-  /* expanded rows (employee tasks / comment box) stay readable while the table scrolls sideways */
-  .roster-table td.expand > *{position:sticky; left:14px; width:calc(100vw - 66px); max-width:calc(100vw - 66px);}
+/* expanded rows (employee tasks / comment box) stay readable while the table scrolls sideways */
+.roster-table td.expand > *{position:sticky; left:14px; width:calc(100vw - 66px) !important; max-width:354px;}
+@supports (width: 1cqw){
+  .roster-table td.expand > *{width:calc(100cqw - 30px) !important; max-width:none;}
 }

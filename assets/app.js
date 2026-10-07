@@ -2339,7 +2339,20 @@ function backToReportHistory(){
     await loadAll();
     await applyPendingSsoLogin();
   }catch(e){
+    // Say which link in the chain failed, so the fix is obvious. The raw server
+    // message goes to the console only — never onto a public sign-in screen.
     const el = document.getElementById('loginError');
-    if(el) el.textContent = "Can't reach the server. Check that the /api/ files and the database are set up.";
+    let msg;
+    if(window.location.protocol === 'file:'){
+      msg = "Logbook is open as a file on this device. Open it from its web address (https://…) instead, so it can reach the server.";
+    } else if(e instanceof TypeError){
+      msg = "Can't reach the server. Check the internet connection and reload.";
+    } else if(e && e.message === 'Request failed'){
+      msg = "The server isn't answering correctly. Check that the /api/ folder is uploaded next to index.html and that PHP is running here.";
+    } else {
+      msg = "The server is running but the database isn't connecting. Check the database details in config.php.";
+    }
+    if(el) el.textContent = msg;
+    console.error('[Logbook] startup failed:', e);
   }
 })();
