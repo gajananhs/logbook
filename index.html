@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Logbook — Tasks, timed right</title>
+
+<!-- PWA metadata -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#16302C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Logbook">
+<link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+<link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="assets/icons/favicon-16.png" sizes="16x16" type="image/png">
+
+<!-- iOS launch screens -->
+<link rel="apple-touch-startup-image" href="assets/splash/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1620x2160.png" media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1640x2360.png" media="(device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-1668x2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="assets/splash/splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css?v=20">
+<link rel="stylesheet" href="assets/pwa.css?v=20">
+</head>
+<body>
+
+<div class="phone" id="app">
+  <div class="statusbar">
+    <span id="statusclock">9:41</span>
+    <span>●●● Logbook</span>
+  </div>
+
+  <!-- ============ SIGN IN ============ -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-inner">
+      <div class="login-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/><path d="M9 8h6M9 12h4"/></svg>
+      </div>
+      <div class="login-mark">SHIFT LOG · V1</div>
+      <h1 class="login-title">Logbook</h1>
+      <p class="login-sub">Sign in with the name and PIN your admin gave you.</p>
+
+      <div class="card login-card" id="newUserRow">
+        <div class="field">
+          <label for="newUserInput">Your name</label>
+          <input type="text" id="newUserInput" placeholder="Your name" maxlength="40" autocomplete="username">
+        </div>
+        <div class="field">
+          <label for="newUserPin">PIN</label>
+          <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="newUserPin" placeholder="PIN (optional)" autocomplete="current-password">
+        </div>
+        <p id="loginError" class="error-text" role="alert"></p>
+        <button class="btn-primary" id="enterBtn" onclick="attemptLogin()">Enter</button>
+      </div>
+      <p class="footnote" style="text-align:center;">Don't have an account yet? Ask your admin to add you from the Employees page. Forgot your PIN? Ask them to reset it there too.</p>
+    </div>
+  </div>
+
+  <!-- ============ APP ============ -->
+  <div id="mainScreen" style="display:none;">
+    <div class="main-wrap">
+      <div class="screen" id="screen">
+        <div class="app-header">
+          <div class="greet">
+            <p id="pageKicker">—</p>
+            <h1 id="pageTitle">Logbook</h1>
+          </div>
+          <div class="header-actions">
+            <button class="bell-btn" id="bellBtn" onclick="toggleNotifPanel()" aria-label="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2.5h-15z"/><path d="M10 21h4"/></svg>
+              <span class="bell-badge" id="bellBadge" style="display:none;">0</span>
+            </button>
+            <button class="avatar" id="avatarBtn" onclick="setTab('more')" aria-label="Account and more">
+              <span id="avatarInitials" aria-hidden="true">LB</span>
+              <span class="sr-only">Signed in as <b id="whoName"></b></span>
+            </button>
+          </div>
+        </div>
+        <div id="notifPanel" class="notif-panel" style="display:none;"></div>
+
+        <main id="mainContent"></main>
+      </div>
+
+      <!-- ---------- TAB BAR ---------- -->
+      <nav class="tabbar" id="tabBar" aria-label="Logbook sections">
+        <button class="tab active" data-tab="mine" onclick="setTab('mine')" aria-label="Assigned to me">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 13l2 2 4-4"/></svg>
+          <span>My tasks</span>
+        </button>
+        <button class="tab" data-tab="byme" onclick="setTab('byme')" aria-label="Assigned by me">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 4 10.5 13.5M20 4l-6 16-3.5-6.5L4 10z"/></svg>
+          <span>Given</span>
+        </button>
+        <button class="tab" data-tab="team" onclick="setTab('team')" aria-label="Team board">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c.4-3.4 2.8-5.5 6-5.5s5.6 2.1 6 5.5"/><path d="M15.5 5.2a3.2 3.2 0 0 1 0 5.6M17.5 14.8c2 .6 3.2 2.4 3.5 5.2"/></svg>
+          <span>Team</span>
+        </button>
+        <button class="tab" data-tab="new" onclick="setTab('new')" aria-label="Assign task">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M12 8v8M8 12h8"/></svg>
+          <span>Assign</span>
+        </button>
+        <button class="tab" data-tab="attendance" onclick="setTab('attendance')" aria-label="Attendance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+          <span>Time</span>
+        </button>
+        <button class="tab" data-tab="more" onclick="setTab('more')" aria-label="More">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+          <span>More</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script src="assets/app.js?v=30"></script>
+<script src="assets/pwa.js?v=20" defer></script>
+</body>
+</html>

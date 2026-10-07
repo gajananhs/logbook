@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#16302C">
+<title>Offline — Logbook</title>
+<style>
+  :root{--ink:#1D2B26;--cream:#FAF7F0;--panel:#FFFFFF;--deep:#16302C;--deep-2:#1F3F39;--sage:#7C9484;--amber:#D9A22C;--line:#E9E5D8;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:var(--panel);color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    padding:max(24px,env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));
+  }
+  main{width:100%;max-width:340px;border:1px solid var(--line);border-radius:16px;padding:28px 22px;}
+  .mark{
+    width:56px;height:56px;border-radius:18px;margin:0 auto 16px;
+    background:linear-gradient(135deg,var(--deep) 0%,var(--deep-2) 100%);color:var(--amber);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .mark svg{width:28px;height:28px;}
+  h1{font-family:'Fraunces',Georgia,serif;font-size:21px;font-weight:600;margin:0 0 6px;}
+  p{color:var(--sage);font-size:12.5px;line-height:1.6;margin:0 auto 20px;}
+  button{
+    width:100%;background:var(--deep);color:var(--cream);border:none;border-radius:10px;
+    padding:12px;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;min-height:44px;
+  }
+  button:active{background:var(--deep-2);}
+  button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+</style>
+</head>
+<body>
+  <main>
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/><path d="M9 8h6M9 12h4"/></svg>
+    </div>
+    <h1>You're offline</h1>
+    <p>Logbook needs a connection to load and save tasks and attendance. Check your network, then try again.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </main>
+  <script>
+    // Come back automatically the moment the connection returns.
+    window.addEventListener('online', function(){ location.reload(); });
+  </script>
+</body>
+</html>

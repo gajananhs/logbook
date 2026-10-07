@@ -1,0 +1,67 @@
+/* LOGBOOK PWA layer (Meridian styling). Additive: install/update cards, the
+ * online/offline strip and touch/safe-area polish. Uses the app's colour
+ * variables (from style.css) with fallbacks. */
+
+/* ---- install / standalone polish ---- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+button,.tab,select,input[type="checkbox"],input[type="radio"]{touch-action:manipulation;} /* no 300 ms tap delay */
+button{-webkit-tap-highlight-color:rgba(217,162,44,.18);}
+
+/* keep content clear of notches / rounded corners when the frame is dropped
+   (only has an effect because index.html sets viewport-fit=cover) */
+@media (max-width:480px), (display-mode:standalone){
+  .phone{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);}
+  .screen,.login-screen{padding-top:calc(10px + env(safe-area-inset-top));}
+}
+
+/* ---- touch devices: bigger hit targets, no iOS focus-zoom ---- */
+@media (pointer:coarse){
+  .btn-sm{padding:8px 12px;}
+  .log-link{padding:6px 2px;}
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),select,textarea{font-size:16px;}
+  .status-select{font-size:12px !important;}
+}
+
+/* ---- online/offline strip (first child of <body>) ---- */
+.pwa-status{
+  display:none;align-self:stretch;flex-shrink:0;
+  height:32px;line-height:32px;padding:0 12px;text-align:center;
+  font-size:12px;font-weight:600;
+  padding-top:env(safe-area-inset-top);box-sizing:content-box;
+}
+.pwa-status.show{display:block;}
+.pwa-status.offline{background:var(--red,#B85450);color:#fff;}
+.pwa-status.online{background:var(--sage-soft,#E4EBE4);color:#3C5A48;}
+@media (min-width:481px) and (display-mode:browser){
+  .pwa-status{position:fixed;top:0;left:0;right:0;z-index:100;}
+}
+
+/* ---- install / update cards ---- */
+.pwa-dock{
+  position:fixed;left:0;right:0;bottom:calc(76px + env(safe-area-inset-bottom));z-index:45;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:0 14px;pointer-events:none;
+}
+.pwa-card{
+  pointer-events:auto;width:100%;max-width:420px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  background:var(--panel,#FFFFFF);border:1px solid var(--line,#E9E5D8);border-radius:16px;
+  padding:13px 15px;color:var(--ink,#1D2B26);font-size:13px;
+  box-shadow:0 14px 34px rgba(22,48,44,.2);
+}
+.pwa-card-text{display:flex;flex-direction:column;gap:2px;flex:1;min-width:180px;}
+.pwa-card-text b{font-family:'Fraunces',serif;font-size:15px;font-weight:600;}
+.pwa-card-text span{color:var(--sage,#7C9484);font-size:11.5px;line-height:1.4;}
+.pwa-card-text span b{font-family:inherit;font-size:inherit;color:var(--ink,#1D2B26);}
+.pwa-card-actions{display:flex;gap:8px;margin-left:auto;}
+.pwa-btn{
+  background:var(--deep,#16302C);color:var(--cream,#FAF7F0);border:none;border-radius:10px;
+  padding:9px 16px;font-size:12.5px;font-weight:600;min-height:38px;
+}
+.pwa-btn:disabled{opacity:.6;}
+.pwa-btn-ghost{background:var(--cream,#FAF7F0);color:var(--deep,#16302C);border:1px solid var(--line,#E9E5D8);}
+.pwa-btn:focus-visible{outline:2px solid var(--amber,#D9A22C);outline-offset:2px;}
+
+/* ---- installed (standalone) window ---- */
+html.pwa-standalone body{overscroll-behavior-y:none;}
+@media print{ .pwa-status,.pwa-dock{display:none !important;} }
