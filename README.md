@@ -131,7 +131,8 @@ Edit `assets/js/config.js`:
 |---|---|
 | `summaryEmailTo` | Pre-filled recipient(s) for **Email summary** and **Send via email**. Empty = choose when sending. |
 | `whatsappNumber` | Number for **Share via WhatsApp** (digits with country code). Empty = WhatsApp asks who to send to. |
-| `salesReportUrl` | When set, **More** shows a **Back to Sales Report** link to that address. |
+| `salesReportUrl` | Address opened by **Back to Sales Report** (header icon and **More** page). Empty = hidden for everyone. |
+| `salesReportDepartments` | Who sees that link besides admins: anyone whose department or sub-department name contains one of these words. Default: marketing and CEO. |
 
 Email is sent by opening a Gmail compose window in the user's browser; there is no mail server.
 

@@ -40,8 +40,8 @@
   --blue-dark:var(--deep);
   --blue-light:var(--deep-2);
 
-  /* Framed app (Meridian's device frame). Phones drop the frame entirely; the frame
-     widens on tablets and desktops so tables and task cards use the space. */
+  /* Mobile-first: phones show the app full screen; tablets and desktops show the same
+     phone layout inside Meridian's device frame (390 x 820). */
   --frame-w:390px;
   --frame-h:820px;
 }
@@ -120,23 +120,9 @@ b{font-weight:600;}
 .screen::-webkit-scrollbar{display:none;}
 .screen{scrollbar-width:none;}
 
-/* ---------- TABLET (framed, wider) ---------- */
-@media (min-width: 600px) and (display-mode: browser){
-  :root{--frame-w:560px; --frame-h:calc(100vh - 48px);}
-  .phone{max-height:none; min-height:560px;}
-  .notch{display:none;}
-  .screen{padding:0 24px 22px;}
-}
-/* ---------- DESKTOP (framed, widest) ---------- */
-@media (min-width: 1024px) and (display-mode: browser){
-  :root{--frame-w:980px;}
-  .screen{padding:0 32px 26px;}
-  .stat-strip{flex-wrap:wrap; overflow:visible;}
-  .login-inner{max-width:380px;}
-}
-/* installed app on a large screen: no frame, but keep content at a readable width */
+/* installed app on a large screen: no frame, but keep the phone-width column */
 @media (min-width: 900px) and (display-mode: standalone){
-  .app-header, #mainContent, .tabbar{width:100%; max-width:980px; margin-left:auto; margin-right:auto;}
+  .app-header, #mainContent, .tabbar{width:100%; max-width:480px; margin-left:auto; margin-right:auto;}
   .tabbar{max-width:none;}
 }
 

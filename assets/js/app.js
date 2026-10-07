@@ -347,6 +347,8 @@ function enterAsUser(user){
   document.getElementById('avatarInitials').textContent = initialsOf(CURRENT_USER.name);
   renderAdminTabs();
   applyRoleTabVisibility();
+  const srBtn = document.getElementById('salesReportBtn');
+  if(srBtn) srBtn.style.display = canGoBackToSalesReport(CURRENT_USER) ? '' : 'none';
   startHeartbeat();
   refreshNotifications();
   startNotifPolling();
@@ -366,9 +368,15 @@ function applyRoleTabVisibility(){
   const teamTabBtn = document.querySelector('.tab[data-tab="team"]');
   if(teamTabBtn) teamTabBtn.style.display = canSeeTeamBoard(CURRENT_USER) ? '' : 'none';
 }
-// "Back to Sales Report" appears only when LOGBOOK_CONFIG.salesReportUrl is set.
+// "Back to Sales Report": admins, plus the departments listed in LOGBOOK_CONFIG.salesReportDepartments
+// (marketing and the CEO's office by default). Hidden for everyone when no address is configured.
 function canGoBackToSalesReport(user){
-  return !!(user && CONFIG.salesReportUrl);
+  if(!user || !CONFIG.salesReportUrl) return false;
+  if(user.isAdmin) return true;
+  const words = (CONFIG.salesReportDepartments || []).map(w => String(w).trim().toLowerCase()).filter(Boolean);
+  const places = [deptName(user.departmentId), subDeptName(user.subDepartmentId), user.department]
+    .filter(Boolean).map(x => String(x).toLowerCase());
+  return words.some(w => places.some(p => p.indexOf(w) !== -1));
 }
 function backToSalesReport(){
   if(CONFIG.salesReportUrl) window.location.href = CONFIG.salesReportUrl;
