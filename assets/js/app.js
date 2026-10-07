@@ -249,6 +249,7 @@ const ICON_PATHS = {
   report:   '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 17v-3M12 17v-6M15 17v-2"/>',
   history:  '<path d="M4 12a8 8 0 1 0 2.6-5.900L4 8.5"/><path d="M4 4v4.500h4.500M12 8v4.500l3 1.8"/>',
   logbook:  '<path d="M5 4.500A1.5 1.5 0 0 1 6.5 3H19v15H6.500A1.5 1.5 0 0 0 5 19.500z"/><path d="M5 19.500A1.5 1.5 0 0 0 6.5 21H19v-3"/><path d="M9 8h6M9 12h4"/>',
+  search:   '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
   logout:   '<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/>',
   back:     '<path d="M15 5l-7 7 7 7"/>',
   chev:     '<path d="M9 5l7 7-7 7"/>',
@@ -577,6 +578,8 @@ function setTab(tab){
   SHOW_ADD_DEPT = false;
   ADD_SUBDEPT_FOR = null;
   COMMENT_FOR_ID = null;
+  TEAM_SEARCH = '';
+  if(tab !== 'team') TEAM_SELECTED_ID = null;
   VIEW_TASKS_FOR_ID = null;
   MARK_COMPLETE_FOR_ID = null;
   PENDING_COMPLETE_STATUS_ID = null;
@@ -1191,6 +1194,8 @@ function renderTeamBoard(){
     return html;
   }
 
+  html += teamSearchHtml(scopedUsers, scopedTasks);
+
   const rosterEmpOptions = `<option value="all">All employees</option>` + scopedUsers
     .slice().sort((a,b)=>a.name.localeCompare(b.name))
     .map(u=>`<option value="${u.id}" ${TEAMBOARD_ROSTER_FILTER===u.id?'selected':''}>${escapeHtml(u.name)}</option>`).join('');
@@ -1301,6 +1306,114 @@ function renderTeamBoard(){
 let TEAMBOARD_FILTER_EMP = 'all';
 let TEAMBOARD_FILTER_STATUS = 'all';
 let TEAMBOARD_ROSTER_FILTER = 'all';
+
+/* ---------- Team board: find an employee by name, see their tasks, assign ---------- */
+let TEAM_SEARCH = '';            // what is typed in the search box
+let TEAM_SELECTED_ID = null;     // employee picked from the results
+
+/* Partial, forgiving match: capital letters, spaces and punctuation don't matter, the words can be
+   in any order, and each typed word only has to appear somewhere in the name ("ram pan" finds
+   "Ramji pandey", "nith" finds "sunitha"). Names that START with the text are listed first. */
+function teamSearchNorm(s){ return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+function teamSearchMatches(query, users){
+  const q = teamSearchNorm(query);
+  if(!q) return [];
+  const words = q.split(' ');
+  const squashed = q.replace(/ /g, '');
+  return users
+    .map(u => {
+      const name = teamSearchNorm(u.name);
+      const hit = words.every(w => name.indexOf(w) !== -1) || name.replace(/ /g, '').indexOf(squashed) !== -1;
+      if(!hit) return null;
+      const rank = name.indexOf(q) === 0 ? 0 : (name.split(' ').some(part => part.indexOf(words[0]) === 0) ? 1 : 2);
+      return { u, rank };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.rank - b.rank || a.u.name.localeCompare(b.u.name))
+    .map(x => x.u);
+}
+function teamScopedUsers(){
+  const ids = visibleTeamUserIds(CURRENT_USER);
+  return USERS.filter(u => ids.includes(u.id));
+}
+function teamSearchResultsHtml(scopedUsers){
+  if(!teamSearchNorm(TEAM_SEARCH)) return '';
+  const hits = teamSearchMatches(TEAM_SEARCH, scopedUsers);
+  if(!hits.length) return `<div class="empty" style="padding:12px 6px 4px;">No employee matches “${escapeHtml(TEAM_SEARCH.trim())}”.</div>`;
+  const shown = hits.slice(0, 8);
+  return `<div class="search-results" role="listbox" aria-label="Matching employees">` + shown.map(u => {
+    const open = TASKS.filter(t => t.assignedTo === u.id && !isTaskDone(t)).length;
+    return `<button class="row-item" type="button" role="option" onclick="selectTeamEmployee('${u.id}')">
+      <span class="row-lead"><span class="avatar" aria-hidden="true">${escapeHtml(initialsOf(u.name))}</span>
+        <span><span class="pname" style="display:block;">${escapeHtml(u.name)}</span><span class="psub" style="display:block;">${escapeHtml(orgContextLabel(u))}</span></span></span>
+      <span class="badge open">${open} open</span>
+    </button>`;
+  }).join('') + (hits.length > shown.length ? `<p class="footnote" style="padding:8px 2px 0;">${hits.length - shown.length} more — keep typing to narrow it down.</p>` : '') + `</div>`;
+}
+function teamSelectedHtml(scopedUsers, scopedTasks){
+  const u = scopedUsers.find(x => x.id === TEAM_SELECTED_ID);
+  if(!u) return '';
+  const rank = t => isTaskDone(t) ? 1 : 0; // open work first, each group newest first
+  const tasks = sortNewestFirst(scopedTasks.filter(t => t.assignedTo === u.id)).sort((a, b) => rank(a) - rank(b));
+  const openCount = tasks.filter(t => !isTaskDone(t)).length;
+  const overdueCount = tasks.filter(isOverdue).length;
+  let html = `<div class="card" id="teamSelected">
+    <h3><span>${escapeHtml(u.name)}</span><button class="btn-sm" onclick="clearTeamEmployee()">Close</button></h3>
+    <p class="psub" style="margin:-6px 0 12px;">${escapeHtml(orgContextLabel(u))}</p>
+    <div class="stat-strip" style="margin-bottom:12px;">
+      <div class="stat-box"><div class="num">${openCount}</div><div class="lbl">Open</div></div>
+      <div class="stat-box"><div class="num" style="color:${overdueCount ? 'var(--red)' : 'var(--ink)'}">${overdueCount}</div><div class="lbl">Overdue</div></div>
+      <div class="stat-box"><div class="num">${tasks.length - openCount}</div><div class="lbl">Completed</div></div>
+    </div>
+    <button class="btn-primary" onclick="assignToEmployee('${u.id}')">${ic('add')}Assign task</button>
+  </div>
+  <div class="section-head"><h2>Tasks assigned to ${escapeHtml(u.name)}</h2><span class="count">${tasks.length} total</span></div>`;
+  if(!tasks.length){
+    html += `<div class="empty" style="padding:16px 6px 24px;"><div class="em-mark">— NO TASKS —</div>Nothing assigned to ${escapeHtml(u.name)} yet.</div>`;
+  } else {
+    tasks.forEach(t => { html += taskCard(t, false, { comments: 'full' }); });
+  }
+  return html;
+}
+function teamSearchHtml(scopedUsers, scopedTasks){
+  return `
+    <div class="field team-search">
+      <label for="teamSearch">Find an employee</label>
+      <div class="search-box">
+        ${ic('search')}
+        <input type="search" id="teamSearch" placeholder="Type part of a name" autocomplete="off" autocapitalize="off" spellcheck="false"
+          value="${escapeHtml(TEAM_SEARCH)}" oninput="onTeamSearchInput(this.value)" onkeydown="onTeamSearchKey(event)">
+      </div>
+      <div id="teamSearchResults">${teamSearchResultsHtml(scopedUsers)}</div>
+    </div>
+    ${teamSelectedHtml(scopedUsers, scopedTasks)}
+  `;
+}
+// Typing only redraws the result list, so the keyboard and cursor stay where they are.
+function onTeamSearchInput(value){
+  TEAM_SEARCH = value;
+  const box = document.getElementById('teamSearchResults');
+  if(box) box.innerHTML = teamSearchResultsHtml(teamScopedUsers());
+}
+function onTeamSearchKey(e){
+  if(e.key === 'Enter'){
+    const first = teamSearchMatches(TEAM_SEARCH, teamScopedUsers())[0];
+    if(first) selectTeamEmployee(first.id);
+  } else if(e.key === 'Escape'){
+    onTeamSearchInput(''); e.target.value = '';
+  }
+}
+function selectTeamEmployee(id){
+  TEAM_SELECTED_ID = id;
+  TEAM_SEARCH = '';
+  render();
+  const panel = document.getElementById('teamSelected');
+  if(panel && panel.scrollIntoView) panel.scrollIntoView({ block: 'start' });
+}
+function clearTeamEmployee(){
+  TEAM_SELECTED_ID = null;
+  render();
+}
 let COMMENT_FOR_ID = null;
 let PRESELECT_ASSIGNEE_ID = null;
 function setTeamBoardFilter(kind, value){

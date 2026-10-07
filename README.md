@@ -13,7 +13,7 @@ Task, attendance and team log manager, built as an installable Progressive Web A
 |---|---|
 | My tasks | Tasks assigned to you, progress updates (log / edit / delete), status changes, mark complete with efficiency, renew repeating work |
 | Given | Tasks you assigned to others; edit, reassign, delete |
-| Team (heads and admins) | Roster with open / overdue / completed / efficiency, view an employee's tasks and comments, assign, comment, filters, email and WhatsApp summary, **Excel import** (admins) |
+| Team (heads and admins) | **Search an employee by part of their name** to see their tasks and assign a new one; roster with open / overdue / completed / efficiency, view an employee's tasks and comments, assign, comment, filters, email and WhatsApp summary, **Excel import** (admins) |
 | Assign | New task for yourself or someone you manage; daily / weekly / monthly repeating work |
 | Time | Clock in / out with location, personal and team timelines, CSV export |
 | More (admins) | Employees, departments and sub-departments, live status, reports (task, attendance, all departments), reports history |
