@@ -398,6 +398,8 @@ input[type=search]{
 .log-link{background:none; border:none; color:var(--sage); font-size:11px; font-weight:500; text-decoration:underline; text-underline-offset:2px; padding:0; white-space:nowrap;}
 .log-link:hover{color:var(--deep);}
 .log-link.danger:hover{color:var(--red);}
+.comment-form{margin-top:10px; display:flex; flex-direction:column; align-items:flex-start; gap:8px;}
+.comment-form textarea{min-height:56px;}
 .log-entry-edit{background:var(--cream); border-radius:12px; padding:12px; margin:6px 0;}
 
 /* ---------- TABLES ---------- */

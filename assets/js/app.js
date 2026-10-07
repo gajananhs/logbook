@@ -876,6 +876,10 @@ function taskCard(t, showActions, opts){
   if(commentMode === 'full'){
     logList = `<div class="log-list"><div class="field-label" style="margin-bottom:6px;">Comments</div>`
       + (ups.length ? ups.map(u=>renderLogEntry(t,u,true)).join('') : `<div class="footnote" style="padding:0;">No comments logged yet.</div>`)
+      + `<div class="comment-form">
+          <textarea placeholder="Write a comment…" aria-label="Comment on ${escapeHtml(t.title)}"></textarea>
+          <button class="btn-sm primary" type="button" onclick="submitTaskComment('${t.id}', this)">${ic('comment')}Save comment</button>
+        </div>`
       + `</div>`;
   } else if(commentMode !== 'none' && ups.length){
     logList = `<div class="log-list">` + ups.slice(0,4).map(u=>renderLogEntry(t,u)).join('') + `</div>`;
@@ -940,6 +944,30 @@ function renderLogEntry(t, u, full){
       <button class="log-link danger" onclick="deleteUpdateConfirm('${u.id}')">del</button>
     </span>` : ''}
   </div>`;
+}
+
+/* Comment on a task from the Team board. A comment is an update that carries only a note:
+   the task's progress is left exactly where it was and no hours are added. You can edit or
+   delete your own comments afterwards with the links beside them. */
+async function submitTaskComment(taskId, btn){
+  const t = TASKS.find(x=>x.id===taskId);
+  const form = btn.closest('.comment-form');
+  const box = form && form.querySelector('textarea');
+  if(!t || !box) return;
+  const note = box.value.trim();
+  if(!note){ showToast('Write a comment first'); box.focus(); return; }
+  const progress = latestProgress(t);
+  btn.disabled = true;
+  try{
+    const res = await apiPost('add_update', { taskId, progressPct: progress, hoursLogged: null, note, byUserId: CURRENT_USER.id });
+    t.updates = t.updates || [];
+    t.updates.push({ id: res.id, date: res.date, progressPct: progress, hoursLogged: null, note, byUserId: CURRENT_USER.id });
+    showToast('Comment saved');
+    render();
+  }catch(e){
+    btn.disabled = false;
+    showToast(e.message || 'Could not save the comment', true);
+  }
 }
 
 function toggleUpdateForm(id){
@@ -1406,6 +1434,7 @@ function onTeamSearchKey(e){
 function selectTeamEmployee(id){
   TEAM_SELECTED_ID = id;
   TEAM_SEARCH = '';
+  if(VIEW_TASKS_FOR_ID === id) VIEW_TASKS_FOR_ID = null; // never show the same person's tasks twice on one page
   render();
   const panel = document.getElementById('teamSelected');
   if(panel && panel.scrollIntoView) panel.scrollIntoView({ block: 'start' });
@@ -1428,6 +1457,7 @@ function setTeamBoardRosterFilter(value){
 let VIEW_TASKS_FOR_ID = null;
 function viewEmployeeTasks(userId){
   VIEW_TASKS_FOR_ID = VIEW_TASKS_FOR_ID === userId ? null : userId;
+  if(VIEW_TASKS_FOR_ID && TEAM_SELECTED_ID === userId) TEAM_SELECTED_ID = null;
   render();
 }
 function assignToEmployee(userId){
