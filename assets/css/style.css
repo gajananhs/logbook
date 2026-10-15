@@ -195,7 +195,7 @@ b{font-weight:600;}
 .login-inner{width:100%; max-width:354px; text-align:center;}
 .login-badge{
   width:56px; height:56px; border-radius:18px; margin:0 auto 14px;
-  background:linear-gradient(135deg, var(--deep) 0%, var(--deep-2) 100%); color:var(--amber);
+  background:#FFFFFF; color:var(--btn); border:1.5px solid var(--btn);
   display:flex; align-items:center; justify-content:center;
 }
 .login-badge svg{width:28px; height:28px;}
