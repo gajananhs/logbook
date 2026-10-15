@@ -8,10 +8,10 @@
 
 <!-- PWA metadata -->
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#16302C">
+<meta name="theme-color" content="#FFFFFF">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Logbook">
 <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 <link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" type="image/png">
@@ -47,6 +47,9 @@
   <!-- ============ SIGN IN ============ -->
   <div id="loginScreen" class="login-screen">
     <div class="login-inner">
+      <div class="login-badge" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/><path d="M9 8h6M9 12h4"/></svg>
+      </div>
       <div class="login-mark">SHIFT LOG · V1</div>
       <h1 class="login-title">Logbook</h1>
       <p class="login-sub">Sign in with the name and PIN your admin gave you.</p>
