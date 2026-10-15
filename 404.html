@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Logbook</title>
+<script>
+  // GitHub Pages serves this file for any unknown address under the site. Logbook is a
+  // single page, so send the visitor to the app's root. On a project site
+  // (https://<user>.github.io/<repo>/…) the root is the first path segment; on a custom
+  // domain or a user site it is "/".
+  (function () {
+    var parts = window.location.pathname.split('/').filter(Boolean);
+    var onProjectSite = /\.github\.io$/i.test(window.location.hostname) && parts.length > 0;
+    var target = onProjectSite ? '/' + parts[0] + '/' : '/';
+    if (window.location.pathname !== target) window.location.replace(target);   // never redirect to the page we are already on
+  })();
+</script>
+</head>
+<body>
+<p style="font-family:system-ui,sans-serif;padding:24px;">That page doesn't exist. <a href="./">Open Logbook</a></p>
+</body>
+</html>
