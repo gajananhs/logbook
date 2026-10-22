@@ -2622,9 +2622,37 @@ function backToReportHistory(){
 }
 
 /* ===================== INIT ===================== */
+/* Sales Reporter "Logbook" button lands here with a signed, short-lived link
+   (?sso_name=&sso_exp=&sso_sig=, or ?name=&exp=&sig=). Verify it with the server
+   (api/sso_login.php) and sign straight in — no name/PIN. */
+const PENDING_SSO = (function(){
+  const p = new URLSearchParams(window.location.search);
+  const name = p.get('sso_name') || p.get('name');
+  const exp = p.get('sso_exp') || p.get('exp');
+  const sig = p.get('sso_sig') || p.get('sig');
+  if(!name || !exp || !sig) return null;
+  ['sso_name','sso_exp','sso_sig','name','exp','sig'].forEach(k => p.delete(k));
+  const rest = p.toString();
+  history.replaceState({}, '', window.location.pathname + (rest ? '?' + rest : '') + window.location.hash);
+  return { name, exp, sig };
+})();
+async function trySsoLogin(){
+  if(!PENDING_SSO) return;
+  const errEl = document.getElementById('loginError');
+  if(errEl) errEl.textContent = 'Signing you in from Sales Reporter…';
+  try{
+    const res = await apiPost('sso_login', PENDING_SSO);
+    if(errEl) errEl.textContent = '';
+    enterAsUser(res.user);
+  }catch(e){
+    if(errEl){ const m = (e.message || 'Could not sign in from Sales Reporter').replace(/[.!]?\s*$/, '.'); errEl.textContent = m + ' Please sign in below.'; }
+  }
+}
+
 (async function init(){
   try{
     await loadAll();
+    await trySsoLogin();
   }catch(e){
     const el = document.getElementById('loginError');
     if(el) el.textContent = LogbookStore.remote

@@ -23,7 +23,7 @@ window.LOGBOOK_CONFIG = {
 
   // Address of the Sales Report app. "Back to Sales Report" (on the More page and in the
   // header) opens it. Empty = the link is hidden for everyone.
-  salesReportUrl: 'https://canaresonline.com/Salesreport/index.php',
+  salesReportUrl: 'https://canaresonline.com/Salesreport1/index.php',
 
   // Who sees "Back to Sales Report": every admin, plus anyone whose department or
   // sub-department name contains one of these words (capital letters don't matter).
