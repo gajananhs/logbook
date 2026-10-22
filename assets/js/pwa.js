@@ -54,7 +54,9 @@
   function goOffline() {
     if (offline) return;
     offline = true;
-    showStatus('offline', "You're offline — Logbook keeps working; everything is saved on this device.");
+    showStatus('offline', (window.LogbookStore && window.LogbookStore.remote)
+      ? "You're offline — showing the last loaded data. Changes need a connection."
+      : "You're offline — Logbook keeps working; everything is saved on this device.");
   }
   function goOnline() {
     if (!offline) return;

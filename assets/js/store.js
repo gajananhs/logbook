@@ -103,9 +103,94 @@
     if (raw) {
       try { db = JSON.parse(raw); } catch (e) { db = null; }
     }
-    if (!db || db.version !== 3) { db = buildSeed(); save(); }
+    var stamp = seedStamp();
+    if (!db || db.version !== 3) { db = buildSeed(); db.seedStamp = stamp; save(); }
+    else if (db.seedStamp !== stamp) {
+      // A newer seed-data.js was published (e.g. a fresh export from the Hostinger database):
+      // bring in every record this device doesn't have yet, keep everything recorded here.
+      try { mergeSeed(buildSeed()); } catch (e) { /* never block sign-in over a bad merge */ }
+      db.seedStamp = stamp; save();
+    }
     ready = Promise.resolve();
     return ready;
+  }
+
+  /* Identifies the published seed: exportedAt from api/export_seed.php, else a size fingerprint. */
+  function seedStamp() {
+    var s = window.LOGBOOK_SEED || {};
+    if (s.exportedAt) return String(s.exportedAt);
+    return ['users', 'tasks', 'attendance', 'notifications', 'reports'].map(function (k) { return (s[k] || []).length; }).join('.');
+  }
+
+  /* Merge a freshly built seed into the device copy (db). Rules:
+   *  - records are matched by id; users/departments/sub-departments/statuses also by name, so an
+   *    employee re-created on this device under a different id isn't duplicated (seed ids remapped);
+   *  - records missing on the device are added; the device's own records are never removed;
+   *  - tasks: progress updates are unioned by id; completion recorded on the server fills in an
+   *    open local task; attendance: a server clock-out fills in a still-open local shift;
+   *  - user PINs, last-seen and locations on the device are kept. */
+  function mergeSeed(fresh) {
+    function lc(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
+    var remap = {};
+    function rid(id) { return id != null && remap[id] ? remap[id] : id; }
+
+    function mergeNamed(key, nameKey, fill) {
+      var list = db[key] = db[key] || [];
+      var byId = {}, byName = {};
+      list.forEach(function (r) { byId[r.id] = r; byName[nameKey(r)] = r; });
+      (fresh[key] || []).forEach(function (r) {
+        var local = byId[r.id] || byName[nameKey(r)];
+        if (!local) { list.push(r); byId[r.id] = r; byName[nameKey(r)] = r; return; }
+        if (local.id !== r.id) remap[r.id] = local.id;
+        if (fill) fill(local, r);
+      });
+    }
+    function fillNulls(fields) {
+      return function (local, r) { fields.forEach(function (f) { if ((local[f] == null || local[f] === '') && r[f] != null) local[f] = rid(r[f]); }); };
+    }
+
+    mergeNamed('departments', function (d) { return lc(d.name); });
+    (fresh.subDepartments || []).forEach(function (s) { s.departmentId = rid(s.departmentId); });
+    mergeNamed('subDepartments', function (s) { return s.departmentId + '|' + lc(s.name); });
+    mergeNamed('statuses', function (s) { return lc(s.name); });
+    (fresh.users || []).forEach(function (u) { u.departmentId = rid(u.departmentId); u.subDepartmentId = rid(u.subDepartmentId); });
+    mergeNamed('users', function (u) { return lc(u.name); }, fillNulls(['departmentId', 'subDepartmentId', 'department', 'phone']));
+
+    var tasksById = {};
+    (db.tasks = db.tasks || []).forEach(function (t) { tasksById[t.id] = t; });
+    (fresh.tasks || []).forEach(function (t) {
+      t.assignedTo = rid(t.assignedTo); t.assignedBy = rid(t.assignedBy); t.status = rid(t.status);
+      (t.updates || []).forEach(function (u) { u.byUserId = rid(u.byUserId); });
+      var local = tasksById[t.id];
+      if (!local) { db.tasks.push(t); tasksById[t.id] = t; return; }
+      var have = {};
+      local.updates = local.updates || [];
+      local.updates.forEach(function (u) { have[u.id] = true; });
+      (t.updates || []).forEach(function (u) { if (!have[u.id]) local.updates.push(u); });
+      local.updates.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+      if (!local.completedAt && t.completedAt) {
+        local.completedAt = t.completedAt; local.actualHours = t.actualHours; local.status = t.status;
+      }
+    });
+
+    var attById = {};
+    (db.attendance = db.attendance || []).forEach(function (a) { attById[a.id] = a; });
+    (fresh.attendance || []).forEach(function (a) {
+      a.userId = rid(a.userId);
+      var local = attById[a.id];
+      if (!local) { db.attendance.push(a); attById[a.id] = a; return; }
+      if (!local.clockOut && a.clockOut) local.clockOut = a.clockOut;
+    });
+    db.attendance.sort(function (a, b) { return String(b.clockIn).localeCompare(String(a.clockIn)); });
+
+    function mergeById(key, fix) {
+      var list = db[key] = db[key] || [];
+      var have = {};
+      list.forEach(function (r) { have[r.id] = true; });
+      (fresh[key] || []).forEach(function (r) { if (!have[r.id]) { if (fix) fix(r); list.push(r); } });
+    }
+    mergeById('notifications', function (n) { n.userId = rid(n.userId); });
+    mergeById('reports', function (r) { r.generatedBy = rid(r.generatedBy); });
   }
   function reset() {
     try { window.localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
@@ -676,7 +761,48 @@
 
   var READ_ONLY = { bootstrap: 1, list_notifications: 1, list_reports: 1, get_report: 1 };
 
+  /* ------------------------------------------------- live server (Hostinger) */
+  /* With LOGBOOK_CONFIG.apiUrl set, every action goes straight to the Hostinger PHP/MySQL API —
+   * one shared database for this app and the Hostinger dashboard, nothing stored per device except
+   * the last loaded copy, shown read-only while offline. Without apiUrl the in-browser store below
+   * is used (single-device demo). Reads are GET with query parameters, writes POST a JSON body sent
+   * as text/plain so the browser makes a "simple" cross-site request (no CORS preflight). */
+  var API_URL = String((window.LOGBOOK_CONFIG || {}).apiUrl || '').replace(/\/+$/, '');
+  var CACHE_KEY = 'logbook.cache.bootstrap.v1';
+
+  function remoteRequest(action, payload) {
+    var url = API_URL + '/' + encodeURIComponent(action) + '.php';
+    var opts;
+    if (READ_ONLY[action]) {
+      var qs = Object.keys(payload || {}).filter(function (k) { return payload[k] != null && payload[k] !== ''; })
+        .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(payload[k]); }).join('&');
+      url += (qs ? '?' + qs : '') ;
+      opts = { method: 'GET', cache: 'no-store', credentials: 'omit' };
+    } else {
+      opts = { method: 'POST', cache: 'no-store', credentials: 'omit',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: JSON.stringify(payload || {}) };
+    }
+    return fetch(url, opts).then(function (res) {
+      return res.text().then(function (txt) {
+        var data = null;
+        try { data = JSON.parse(txt); } catch (e) { data = null; }
+        if (data && data.error) throw fail(data.error, data);
+        if (!res.ok || data === null) throw fail('The Logbook server had a problem (' + res.status + '). Please try again.');
+        if (action === 'bootstrap') { try { window.localStorage.setItem(CACHE_KEY, txt); } catch (e) { /* quota */ } }
+        return data;
+      });
+    }, function () {
+      if (action === 'bootstrap') {
+        var cached = null;
+        try { cached = JSON.parse(window.localStorage.getItem(CACHE_KEY) || 'null'); } catch (e) { cached = null; }
+        if (cached) { cached.offline = true; return cached; }
+      }
+      throw fail("No internet connection — couldn't reach the Logbook server. Try again when you're back online.");
+    });
+  }
+
   function request(action, payload) {
+    if (API_URL) return remoteRequest(action, payload);
     return load().then(function () {
       var handler = actions[action];
       if (!handler) throw fail('Unknown action: ' + action);
@@ -687,8 +813,16 @@
     });
   }
 
+  function resetDevice() {
+    if (!API_URL) return reset();
+    try { window.localStorage.removeItem(CACHE_KEY); window.localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+    return Promise.resolve();
+  }
+
   window.LogbookStore = {
     request: request,
-    reset: reset
+    reset: resetDevice,
+    remote: !!API_URL,
+    apiUrl: API_URL
   };
 })();

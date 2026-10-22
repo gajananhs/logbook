@@ -7,6 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 try {
     $pdo = get_db();
+    release_scheduled_tasks($pdo); // so a task scheduled for today notifies its assignee (beep) as soon as anyone polls
 
     $userId = $_GET['userId'] ?? null;
     if (!$userId) respond(['error' => 'Missing userId'], 400);

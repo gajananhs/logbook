@@ -6,7 +6,7 @@
  * All paths are relative to this file, so the app works unchanged at a domain root
  * or under a GitHub Pages repository path (https://<user>.github.io/<repo>/).
  */
-const APP_VERSION = '3.8.2';
+const APP_VERSION = '4.0.0';
 
 const SHELL_CACHE = `logbook-shell-${APP_VERSION}`;
 const RUNTIME_CACHE = `logbook-runtime-${APP_VERSION}`;
@@ -18,7 +18,6 @@ const SHELL_FILES = [
   'manifest.json',
   'assets/css/style.css',
   'assets/js/config.js',
-  'assets/js/seed-data.js',
   'assets/js/store.js',
   'assets/js/app.js',
   'assets/js/import-excel.js',

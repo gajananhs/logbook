@@ -108,11 +108,31 @@ function userIsTyping(){
   const main = document.getElementById('mainContent');
   return !!(el && main && main.contains(el) && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.tagName === 'SELECT'));
 }
+/* Fingerprint of everything bootstrap returns, so a background refresh only redraws when the
+   server's data actually changed (a redraw would otherwise reset what the user is looking at). */
+function dataSignature(){
+  try{ return JSON.stringify([USERS, RAW_TASKS, STATUSES, ATTENDANCE, DEPARTMENTS, SUB_DEPARTMENTS]); }
+  catch(e){ return String(Math.random()); }
+}
 async function refreshTasksQuietly(){
   if(!CURRENT_USER) return;
+  const before = dataSignature();
   try{ await loadAll(); }catch(e){ return; }
+  if(dataSignature() === before) return;
   if(userIsTyping()){ PENDING_TASK_RERENDER = true; return; }
   render();
+}
+/* Live sync with the Hostinger database: changes made in the Hostinger dashboard (or by anyone on
+   another phone) appear here within LOGBOOK_CONFIG.refreshSeconds, and at once when the app is reopened. */
+let DATA_POLL_TIMER = null;
+function startDataPolling(){
+  stopDataPolling();
+  if(!window.LogbookStore || !LogbookStore.remote) return;
+  const secs = Math.max(10, Number((window.LOGBOOK_CONFIG || {}).refreshSeconds) || 30);
+  DATA_POLL_TIMER = setInterval(function(){ if(!document.hidden) refreshTasksQuietly(); }, secs * 1000);
+}
+function stopDataPolling(){
+  if(DATA_POLL_TIMER){ clearInterval(DATA_POLL_TIMER); DATA_POLL_TIMER = null; }
 }
 document.addEventListener('focusout', function(){
   if(!PENDING_TASK_RERENDER) return;
@@ -122,7 +142,10 @@ document.addEventListener('focusout', function(){
 });
 // Browsers slow timers in background tabs, so check for new tasks the moment the tab comes back.
 document.addEventListener('visibilitychange', function(){
-  if(!document.hidden && CURRENT_USER) refreshNotifications();
+  if(!document.hidden && CURRENT_USER){
+    refreshNotifications();
+    if(window.LogbookStore && LogbookStore.remote) refreshTasksQuietly();
+  }
 });
 
 /* ===================== UTIL ===================== */
@@ -461,8 +484,10 @@ async function refreshNotifications(){
 function startNotifPolling(){
   stopNotifPolling();
   NOTIF_POLL_TIMER = setInterval(refreshNotifications, 15000);
+  startDataPolling();
 }
 function stopNotifPolling(){
+  stopDataPolling();
   if(NOTIF_POLL_TIMER){ clearInterval(NOTIF_POLL_TIMER); NOTIF_POLL_TIMER = null; }
   SEEN_NOTIF_IDS = null; // re-establish a fresh baseline on next login, don't carry state between sessions
 }
@@ -671,7 +696,7 @@ function renderMore(){
       <span class="row-chev">${ic('chev')}</span>
     </button>` : ''}
     <button class="row-item" onclick="resetDeviceData()">
-      <span class="row-lead"><span class="row-icon">${ic('reset')}</span><span><span class="pname" style="display:block;">Reset this device</span><span class="psub" style="display:block;">Erases changes saved here and restores the starting data</span></span></span>
+      <span class="row-lead"><span class="row-icon">${ic('reset')}</span><span><span class="pname" style="display:block;">${LogbookStore.remote ? 'Clear saved copy on this device' : 'Reset this device'}</span><span class="psub" style="display:block;">${LogbookStore.remote ? 'Removes the offline copy and reloads from the server — server data is not touched' : 'Erases changes saved here and restores the starting data'}</span></span></span>
     </button>
     <button class="row-item danger" onclick="switchUser()">
       <span class="row-lead"><span class="row-icon">${ic('logout')}</span><span class="pname">Logout</span></span>
@@ -681,11 +706,14 @@ function renderMore(){
 }
 
 async function resetDeviceData(){
-  if(!confirm('Reset Logbook on this device? Every task, update, shift, PIN and employee change saved here is erased and the starting data is restored.')) return;
+  const msg = LogbookStore.remote
+    ? 'Clear the offline copy on this device and sign out? Nothing on the server is changed.'
+    : 'Reset Logbook on this device? Every task, update, shift, PIN and employee change saved here is erased and the starting data is restored.';
+  if(!confirm(msg)) return;
   await LogbookStore.reset();
   switchUser();
-  await loadAll();
-  showToast('Logbook reset on this device');
+  try{ await loadAll(); }catch(e){ /* offline: sign-in screen shows the error on next try */ }
+  showToast(LogbookStore.remote ? 'Offline copy cleared' : 'Logbook reset on this device');
 }
 
 /* ===================== MY BOARD ===================== */
@@ -2599,7 +2627,9 @@ function backToReportHistory(){
     await loadAll();
   }catch(e){
     const el = document.getElementById('loginError');
-    if(el) el.textContent = "Logbook couldn't load its data on this device. Reload the page; if it keeps happening, allow site storage for this address.";
+    if(el) el.textContent = LogbookStore.remote
+      ? "Logbook couldn't reach the server. Check the internet connection and reload the page."
+      : "Logbook couldn't load its data on this device. Reload the page; if it keeps happening, allow site storage for this address.";
     console.error('[Logbook] startup failed:', e);
   }
 })();

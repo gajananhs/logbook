@@ -8,6 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 try {
     $pdo = get_db();
     ensure_repeat_columns($pdo);
+    release_scheduled_tasks($pdo); // go-live for imported tasks whose target date has arrived
 
     $users = $pdo->query('SELECT id, name, created_at, is_admin, role, department_id, sub_department_id, department, phone, last_seen, last_lat, last_lng, location_at, (pin_hash IS NOT NULL) AS has_pin FROM users ORDER BY created_at ASC')->fetchAll();
     foreach ($users as &$u) {
@@ -63,6 +64,7 @@ try {
             'actualHours' => $t['actual_hours'] !== null ? (float)$t['actual_hours'] : null,
             'repeatType' => $t['repeat_type'] ?? 'none',
             'repeatParentId' => $t['repeat_parent_id'] ?? null,
+            'availableFrom' => $t['available_from'] ?? null,
             'updates' => $updatesByTask[$t['id']] ?? [],
         ];
     }
@@ -80,7 +82,7 @@ try {
         ];
     }
 
-    respond(['users' => $users, 'tasks' => $out, 'statuses' => $statuses, 'attendance' => $attendance, 'departments' => $departments, 'subDepartments' => $subDepartments]);
+    respond(['serverDate' => date('Y-m-d'), 'users' => $users, 'tasks' => $out, 'statuses' => $statuses, 'attendance' => $attendance, 'departments' => $departments, 'subDepartments' => $subDepartments]);
 } catch (Exception $e) {
     respond(['error' => $e->getMessage()], 500);
 }

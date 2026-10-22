@@ -38,13 +38,9 @@ try {
         respond(['error' => 'No matching account found'], 404);
     }
 
-    // Only the marketing/sales-side users who actually use Sales Reporter
-    // get this handoff — keep this list in sync with SALES_REPORT_USERS
-    // in assets/app.js.
-    $salesReportUsers = ['mahesh', 'prem', 'mohan raj', 'harishiv', 'gajanan', 'sunitha', 'ramji'];
-    if (!in_array(strtolower(trim($user['name'])), $salesReportUsers, true)) {
-        respond(['error' => 'This account does not have Sales Reporter access'], 403);
-    }
+    // Every Logbook account gets this handoff now — the earlier
+    // marketing/sales-only allow-list here (and its mirror,
+    // SALES_REPORT_USERS in assets/app.js) has been removed.
 
     // Link is valid for 2 minutes and single-purpose (name + expiry only),
     // signed with the exact same shared secret used for the forward handoff.

@@ -1,6 +1,13 @@
 /* LOGBOOK settings — the only file you need to edit to tailor the app.
  * Leave a value empty to switch that feature off or let the user choose at send time. */
 window.LOGBOOK_CONFIG = {
+  // Live data: the Hostinger Logbook API. Every task, update, clock-in and employee change is read
+  // from and saved to the same MySQL database the Hostinger dashboard uses — no exports, no per-device
+  // copies. Empty = single-device demo mode (data kept only in this browser).
+  apiUrl: 'https://canaresonline.com/logbook/api',
+  // How often an open app pulls fresh data from the server (seconds).
+  refreshSeconds: 30,
+
   // "Email summary" (Team board): address of the Logbook server's send_summary endpoint. The server
   // builds the formatted Team Summary from its own live data and emails it to the recipients set
   // on the server. Empty = open a compose window with a plain-text summary instead.

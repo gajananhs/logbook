@@ -8,3 +8,7 @@ Thumbs.db
 node_modules/
 *.log
 *.zip
+
+# server credentials — never commit
+config.php
+api/config_smtp.php

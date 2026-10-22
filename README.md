@@ -2,10 +2,10 @@
 
 Task, attendance and team log manager, built as an installable Progressive Web App.
 
-- **Static site** — plain HTML, CSS and JavaScript. No framework, no server code, no build step.
-- **Works offline** — the app shell, fonts and icons are cached by a service worker; data is stored in the browser.
+- **Static front end, live data** — plain HTML, CSS and JavaScript on GitHub Pages; every read and write goes to the Hostinger PHP/MySQL API (`api/`), the same database the Hostinger dashboard uses.
+- **Works offline (read-only)** — the app shell, fonts and icons are cached by a service worker; the last loaded data stays viewable without a connection. Saving needs the internet.
 - **Deploys on GitHub Pages** — every path is relative, so it runs unchanged at `https://<user>.github.io/<repo>/` or on a custom domain.
-- **Starts with your organisation** — employees, departments, statuses, tasks, attendance and saved reports come from `assets/js/seed-data.js`.
+- **Always current** — an open app pulls fresh data every 30 seconds (`refreshSeconds`) and whenever it is reopened, so changes made in the Hostinger dashboard or on another phone show up by themselves.
 
 ## What the app does
 
@@ -24,25 +24,27 @@ Roles: **admin**, **department head**, **sub-department head**, **employee**. Wh
 
 Type an employee's name exactly as it appears under **More → Employees** (capital letters don't matter). No PINs are shipped with the app: an admin sets each person's PIN from **More → Employees → Manage → Reset PIN**, and until then that account opens with the name alone.
 
-**More → Reset this device** erases everything saved in that browser and restores the starting data.
+**More → Clear saved copy on this device** removes the offline copy kept in that browser and signs out. Nothing on the server changes.
 
-### Starting data (`assets/js/seed-data.js`)
+## Where the data lives
 
-This file holds the employees (name, role, admin flag, department, sub-department, phone, joining date), departments and sub-departments, task statuses, every task with its updates, attendance, notifications and saved reports. It contains **no** PINs and no GPS coordinates.
+All data lives in the **Hostinger MySQL database** (`canaresonline.com/logbook`). This GitHub app and the Hostinger dashboard are two screens on the same data:
 
-**GitHub Pages serves every file publicly, even from a private repository** — anyone with the site link can read this file, including names, phone numbers, task details and attendance times. Only publish it if that is acceptable.
+- a task assigned, an update logged, a clock-in or an employee change on either one is saved to the database at once;
+- every phone sees the same data; open apps refresh every 30 seconds and when reopened;
+- the browser keeps only a copy of the last loaded data, to show while offline. Changes can't be saved offline.
 
-Edit the file to change what the app starts with; devices that already opened the app keep their saved copy until **Reset this device** is used.
+There are no data files in this repo and nothing to export or upload when data changes.
 
-## Important: where the data lives
+### Server requirement (one-time)
 
-Everything is saved in the browser's `localStorage` **on the device that is using the app**. There is no server, so:
+The Hostinger API must allow calls from the GitHub Pages site. `api/_bootstrap.php` in this repo already does that (any `https://<name>.github.io` site, canaresonline.com, and localhost). Upload it to `public_html/logbook/api/_bootstrap.php` on Hostinger once. For a custom domain on GitHub Pages, add to Hostinger's `config.php`:
 
-- data is **not shared** between people or devices — each browser has its own copy;
-- clearing site data, or **Reset this device**, removes it;
-- PINs are stored as salted SHA-256 hashes, but a static site cannot keep anything secret from the person holding the device. Treat this build as a demo or a single-device tool, not as a secured multi-user system.
+```php
+define('CORS_EXTRA_ORIGINS', 'https://logbook.example.com');
+```
 
-To make it multi-user, put a real API behind `assets/js/store.js` (see [Connecting a backend](#connecting-a-backend)).
+`api/` here is the live Hostinger server code (without `config.php` / `config_smtp.php`, which hold passwords and must never be committed).
 
 ## Project structure
 
@@ -56,12 +58,12 @@ To make it multi-user, put a real API behind `assets/js/store.js` (see [Connecti
 ├── .nojekyll                Tells GitHub Pages to serve the files as they are
 ├── .gitignore
 ├── README.md
+├── api/                     Hostinger PHP API (live server code; upload changes to public_html/logbook/api/)
 └── assets/
     ├── css/style.css        All styles (design tokens, components, responsive rules, PWA cards)
     ├── js/
-    │   ├── config.js        Settings you may edit (email recipient, WhatsApp number, …)
-    │   ├── seed-data.js     Starting data: employees, departments, statuses, tasks, attendance, reports
-    │   ├── store.js         Data layer: storage and business rules
+    │   ├── config.js        Settings you may edit (server address, refresh interval, email recipient, …)
+    │   ├── store.js         Data layer: calls the Hostinger API (or an in-browser demo store if apiUrl is empty)
     │   ├── app.js           Views and application logic
     │   ├── import-excel.js  Excel import (Team board, admins)
     │   └── pwa.js           Service-worker registration, install / update prompts, offline strip
@@ -129,6 +131,8 @@ Edit `assets/js/config.js`:
 
 | Setting | Effect |
 |---|---|
+| `apiUrl` | Hostinger API address (`https://canaresonline.com/logbook/api`). Empty = single-device demo mode with data only in the browser. |
+| `refreshSeconds` | How often an open app pulls fresh data from the server. Default 30. |
 | `summaryEmailTo` | Pre-filled recipient(s) for **Email summary** and **Send via email**. Empty = choose when sending. |
 | `whatsappNumber` | Number for **Share via WhatsApp** (digits with country code). Empty = WhatsApp asks who to send to. |
 | `salesReportUrl` | Address opened by **Back to Sales Report** (header icon and **More** page). Empty = hidden for everyone. |
@@ -142,15 +146,9 @@ Admins: **Team → Import Excel**. Use **Download a sample workbook** to get a c
 
 The sheet needs a header row containing `RESPONSIBILITY` and two `date` columns (order date first, target date last). `TO NO`, `CUSTOMER NAME`, `PART NUMBER`, `ORD. QTY`, `B/L` and `remarks` are copied into the task details. You get a preview — matched employees, tasks per target date, skipped rows — before anything is created. Importing the same sheet twice does not create duplicates. A task with a future target date stays hidden from its assignee until that date.
 
-## Connecting a backend
+## How the app talks to the server
 
-`assets/js/app.js` reads and writes data only through one function:
-
-```js
-LogbookStore.request(action, payload)   // returns a Promise
-```
-
-`assets/js/store.js` implements every action (`bootstrap`, `login`, `add_task`, `clock_in`, `generate_report`, …) in the browser. To use a server instead, replace the body of `request()` with a `fetch()` to your API that returns the same JSON shapes and rejects with an `Error` whose `message` is shown to the user. Nothing else needs to change.
+`assets/js/app.js` reads and writes data only through `LogbookStore.request(action, payload)`. With `apiUrl` set, `store.js` turns that into `GET <apiUrl>/<action>.php?…` for reads (`bootstrap`, `list_notifications`, `list_reports`, `get_report`) and `POST <apiUrl>/<action>.php` with a JSON body for everything else — the same endpoints the Hostinger dashboard uses. Server errors are shown to the user as returned.
 
 ## Browser support
 

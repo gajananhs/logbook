@@ -23,8 +23,34 @@ if (file_exists($__smtpConfigPath) && file_exists($__pmException) && file_exists
 }
 
 header('Content-Type: application/json; charset=utf-8');
-// If the frontend is ever hosted on a different origin than this API, uncomment and set explicitly:
-// header('Access-Control-Allow-Origin: https://your-frontend-domain.com');
+
+/**
+ * ---- CROSS-SITE ACCESS (GitHub Pages build of Logbook) -------------------
+ * The GitHub-hosted app reads and writes this same database through these
+ * endpoints. Browsers only allow that when the API names the calling site.
+ * Allowed: any https://<name>.github.io site, canaresonline.com, local testing,
+ * plus anything listed in CORS_EXTRA_ORIGINS (define it in config.php,
+ * comma-separated, e.g. a custom domain pointed at GitHub Pages).
+ */
+$__origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($__origin !== '') {
+    $__extra = defined('CORS_EXTRA_ORIGINS') ? array_map('trim', explode(',', CORS_EXTRA_ORIGINS)) : [];
+    $__allowed = preg_match('#^https://[a-z0-9-]+\.github\.io$#i', $__origin)
+        || preg_match('#^https://(www\.)?canaresonline\.com$#i', $__origin)
+        || preg_match('#^http://(localhost|127\.0\.0\.1)(:\d+)?$#', $__origin)
+        || in_array($__origin, $__extra, true);
+    if ($__allowed) {
+        header('Access-Control-Allow-Origin: ' . $__origin);
+        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type');
+        header('Access-Control-Max-Age: 86400');
+    }
+    header('Vary: Origin');
+}
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 function respond($data, $code = 200) {
     http_response_code($code);
@@ -350,4 +376,108 @@ function spawn_next_occurrence(PDO $pdo, string $taskId): ?string
     }
 
     return $newId;
+}
+
+
+/**
+ * ---- SCHEDULED / IMPORTED TASKS (Excel import) -----------------------------
+ * Three optional columns on `tasks`, all NULL/harmless for every existing task:
+ *   available_from   DATE        the day the task goes live for its assignee (Excel target date)
+ *   release_notified TINYINT(1)  0 = not yet released/announced; DEFAULT 1 so existing tasks never trigger
+ *   import_key       VARCHAR(40) fingerprint of an imported row, so re-uploading a sheet can't duplicate it
+ * Self-healing like ensure_repeat_columns(): added on first use if missing.
+ */
+function ensure_import_columns(PDO $pdo): void
+{
+    static $done = false;
+    if ($done) return;
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT column_name AS c FROM information_schema.columns
+             WHERE table_schema = ? AND table_name = "tasks"
+               AND column_name IN ("available_from", "release_notified", "import_key")'
+        );
+        $stmt->execute([DB_NAME]);
+        $have = array_map('strtolower', array_column($stmt->fetchAll(), 'c'));
+        if (!in_array('available_from', $have, true)) {
+            $pdo->exec("ALTER TABLE tasks ADD COLUMN available_from DATE NULL");
+        }
+        if (!in_array('release_notified', $have, true)) {
+            $pdo->exec("ALTER TABLE tasks ADD COLUMN release_notified TINYINT(1) NOT NULL DEFAULT 1");
+        }
+        if (!in_array('import_key', $have, true)) {
+            $pdo->exec("ALTER TABLE tasks ADD COLUMN import_key VARCHAR(40) NULL");
+            $pdo->exec("ALTER TABLE tasks ADD INDEX idx_import_key (import_key)");
+        }
+        $done = true;
+    } catch (Throwable $e) {
+        // Best-effort — worst case the import endpoint reports its own clear SQL error.
+    }
+}
+
+/**
+ * Releases imported tasks whose target date has arrived: sends the assignee ONE
+ * "New task(s) assigned" notification (the dashboard beeps on that message) and marks
+ * the tasks announced. Called from bootstrap.php and list_notifications.php, which every
+ * open dashboard polls, so a task goes live within seconds of its date starting — no cron.
+ * Safe under concurrency: a task is "claimed" with an atomic UPDATE, so two polls at the
+ * same moment can never announce it twice. Never throws.
+ */
+function release_scheduled_tasks(PDO $pdo): void
+{
+    $rows = [];
+    for ($attempt = 1; $attempt <= 2; $attempt++) {
+        try {
+            $stmt = $pdo->prepare(
+                'SELECT id, title, assigned_to, assigned_by FROM tasks
+                 WHERE release_notified = 0 AND available_from IS NOT NULL AND available_from <= ?
+                 ORDER BY assigned_to, available_from, created_at LIMIT 500'
+            );
+            $stmt->execute([date('Y-m-d')]);
+            $rows = $stmt->fetchAll();
+            break;
+        } catch (Throwable $e) {
+            if ($attempt === 1) { ensure_import_columns($pdo); continue; } // columns missing on first ever call
+            return;
+        }
+    }
+    if (!$rows) return;
+
+    try {
+        $claim = $pdo->prepare('UPDATE tasks SET release_notified = 1 WHERE id = ? AND release_notified = 0');
+        $byUser = [];
+        foreach ($rows as $r) {
+            $claim->execute([$r['id']]);
+            if ($claim->rowCount() !== 1) continue;                       // another request released it first
+            if ($r['assigned_to'] === $r['assigned_by']) continue;        // self-assigned: no alert (same rule as add_task.php)
+            $byUser[$r['assigned_to']][] = $r;
+        }
+        foreach ($byUser as $userId => $list) {
+            if (count($list) === 1) {
+                notify($pdo, $userId, 'New task assigned: ' . mb_substr($list[0]['title'], 0, 200), $list[0]['id']);
+            } else {
+                notify($pdo, $userId, 'New tasks assigned: ' . count($list) . ' tasks — see Assigned to Me', null);
+            }
+        }
+    } catch (Throwable $e) {
+        // Best-effort — must never break bootstrap / notification polling.
+    }
+}
+
+/**
+ * Who may use the Excel import: an ADMIN whose name contains "Prabhakaran".
+ * (Same trust level as can_assign(): the app identifies the caller by the user id it sends.)
+ */
+function can_import_excel(PDO $pdo, $userId): bool
+{
+    if (!$userId) return false;
+    $stmt = $pdo->prepare('SELECT name, is_admin FROM users WHERE id = ?');
+    $stmt->execute([$userId]);
+    $u = $stmt->fetch();
+    // Matches "Prabhakaran" or "Prabakaran" (the account is actually named without the h) —
+    // and any spacing/punctuation in between — so a small spelling difference in the account
+    // name doesn't silently hide the button.
+    // Any admin account may import — the earlier name-matching check ("Prabhakaran"/"Prabakaran")
+    // was too fragile to rely on, so this is now scoped to is_admin only.
+    return $u && (int)$u['is_admin'] === 1;
 }
