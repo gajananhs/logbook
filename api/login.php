@@ -46,7 +46,7 @@ try {
         'department' => $user['department'],
         'phone' => $user['phone'],
         'has_pin' => $user['pin_hash'] !== null,
-    ]]);
+    ], 'token' => issue_session_token($user['id'], false)]);
 } catch (Exception $e) {
     respond(['error' => $e->getMessage()], 500);
 }

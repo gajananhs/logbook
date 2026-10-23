@@ -481,3 +481,56 @@ function can_import_excel(PDO $pdo, $userId): bool
     // was too fragile to rely on, so this is now scoped to is_admin only.
     return $u && (int)$u['is_admin'] === 1;
 }
+
+/**
+ * ---- SALES REPORTER <-> LOGBOOK HAND-OFF SECURITY -------------------------
+ * sso_configured()       true once SSO_SHARED_SECRET is set in config.php.
+ * claim_sso_ticket()     makes each Sales Reporter hand-off link single-use:
+ *                        the first use stores a hash of its signature, any
+ *                        repeat is refused. Expired rows are purged as it goes.
+ *                        Table `sso_used_tickets` is created on first use.
+ * issue_session_token()  short signed token returned by login / sso_login and
+ * verify_session_token() checked by get_sales_report_link.php, so a Sales
+ *                        Reporter link is only ever signed for the person who
+ *                        actually signed in here — never for a name a caller
+ *                        merely types in. Signed with a key derived from
+ *                        SSO_SHARED_SECRET for this purpose only, so it can't
+ *                        be passed off as a hand-off link. Never put in a URL.
+ */
+function sso_configured(): bool
+{
+    return defined('SSO_SHARED_SECRET') && SSO_SHARED_SECRET !== ''
+        && strpos(SSO_SHARED_SECRET, 'CHANGE_ME') !== 0;
+}
+
+function claim_sso_ticket(PDO $pdo, string $sig, int $exp): bool
+{
+    $pdo->exec('CREATE TABLE IF NOT EXISTS sso_used_tickets (
+        sig_hash   CHAR(64) PRIMARY KEY,
+        expires_at INT      NOT NULL
+    )');
+    $pdo->prepare('DELETE FROM sso_used_tickets WHERE expires_at < ?')->execute([time() - 60]);
+    $stmt = $pdo->prepare('INSERT IGNORE INTO sso_used_tickets (sig_hash, expires_at) VALUES (?, ?)');
+    $stmt->execute([hash('sha256', $sig), $exp]);
+    return $stmt->rowCount() === 1;
+}
+
+function b64url_encode(string $s): string { return rtrim(strtr(base64_encode($s), '+/', '-_'), '='); }
+function b64url_decode(string $s) { return base64_decode(strtr($s, '-_', '+/')); }
+
+function issue_session_token(string $userId, bool $viaSalesReport): ?string
+{
+    if (!sso_configured()) return null;
+    $payload = b64url_encode(json_encode(['u' => $userId, 'sr' => $viaSalesReport ? 1 : 0, 'exp' => time() + 12 * 3600]));
+    return $payload . '.' . hash_hmac('sha256', $payload, 'logbook-session|' . SSO_SHARED_SECRET);
+}
+
+function verify_session_token(string $token): ?array
+{
+    if (!sso_configured() || substr_count($token, '.') !== 1) return null;
+    [$payload, $sig] = explode('.', $token);
+    if (!hash_equals(hash_hmac('sha256', $payload, 'logbook-session|' . SSO_SHARED_SECRET), $sig)) return null;
+    $data = json_decode((string)b64url_decode($payload), true);
+    if (!is_array($data) || empty($data['u']) || (int)($data['exp'] ?? 0) < time()) return null;
+    return $data;
+}
