@@ -13,6 +13,8 @@ let NOTIFICATIONS = [];
 let DEPARTMENTS = [];
 let SUB_DEPARTMENTS = [];
 let CURRENT_USER = null;
+// Signed sign-in token from the server (login / sso_login). Kept in memory only — never in a URL.
+let SESSION_TOKEN = null;
 let ACTIVE_TAB = 'mine';
 let OPEN_UPDATE_FORM = null;
 let EDIT_TASK_ID = null;
@@ -348,6 +350,7 @@ async function attemptLogin(){
   btn.disabled = true;
   try{
     const res = await apiPost('login', { name, pin: pin || '' });
+    SESSION_TOKEN = res.token || null;
     enterAsUser(res.user);
   }catch(e){
     if(errEl) errEl.textContent = e.message || 'Could not sign in';
@@ -398,19 +401,35 @@ function applyRoleTabVisibility(){
 // (marketing and the CEO's office by default). Hidden for everyone when no address is configured.
 function canGoBackToSalesReport(user){
   if(!user || !CONFIG.salesReportUrl) return false;
+  if(user.viaSalesReport) return true; // signed in from Sales Reporter = Sales Reporter team member
   if(user.isAdmin) return true;
   const words = (CONFIG.salesReportDepartments || []).map(w => String(w).trim().toLowerCase()).filter(Boolean);
   const places = [deptName(user.departmentId), subDeptName(user.subDepartmentId), user.department]
     .filter(Boolean).map(x => String(x).toLowerCase());
   return words.some(w => places.some(p => p.indexOf(w) !== -1));
 }
-function backToSalesReport(){
-  if(CONFIG.salesReportUrl) window.location.href = CONFIG.salesReportUrl;
+/* Ask the server for a signed, 2-minute link so Sales Reporter opens already signed in.
+   If that isn't possible (no token, offline, older server) fall back to the plain address,
+   where an existing Sales Reporter session still applies. */
+let SR_NAV_BUSY = false;
+async function backToSalesReport(){
+  if(!CONFIG.salesReportUrl || SR_NAV_BUSY) return;
+  SR_NAV_BUSY = true;
+  let url = CONFIG.salesReportUrl;
+  if(SESSION_TOKEN && window.LogbookStore && LogbookStore.remote){
+    try{
+      const res = await apiPost('get_sales_report_link', { token: SESSION_TOKEN });
+      if(res && res.url) url = res.url;
+    }catch(e){ console.warn('[Logbook] signed Sales Report link unavailable:', e && e.message); }
+  }
+  window.location.href = url;
+  setTimeout(() => { SR_NAV_BUSY = false; }, 4000);
 }
 function switchUser(){
   stopHeartbeat();
   stopNotifPolling();
   CURRENT_USER = null;
+  SESSION_TOKEN = null;
   TAB_HISTORY = [];
   EDIT_TASK_ID = null;
   EDIT_UPDATE_ID = null;
@@ -2642,6 +2661,7 @@ async function trySsoLogin(){
   if(errEl) errEl.textContent = 'Signing you in from Sales Reporter…';
   try{
     const res = await apiPost('sso_login', PENDING_SSO);
+    SESSION_TOKEN = res.token || null;
     if(errEl) errEl.textContent = '';
     enterAsUser(res.user);
   }catch(e){
