@@ -422,7 +422,16 @@ async function backToSalesReport(){
       if(res && res.url) url = res.url;
     }catch(e){ console.warn('[Logbook] signed Sales Report link unavailable:', e && e.message); }
   }
-  window.location.href = url;
+  // Running as the installed Logbook app: open Sales Reporter as a real link (new window,
+  // no opener) so an installed Sales Reporter app picks it up. In a browser tab: same tab, as before.
+  const isApp = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  if(isApp){
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.display = 'none';
+    document.body.appendChild(a); a.click(); a.remove();
+  } else {
+    window.location.href = url;
+  }
   setTimeout(() => { SR_NAV_BUSY = false; }, 4000);
 }
 function switchUser(){
